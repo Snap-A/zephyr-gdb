@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2024 Andreas Wolf (awolf002@gmail.com)
+# SPDX-License-Identifier: Apache-2.0
+#
+# pylint: disable=import-error
+import gdb
+import enum
+from .common import StructProperty
+
+class ThreadProperty(StructProperty):
+    NAME = ('', 'name', 'get_string_val')
+    STATUS = ('State', 'thread_state', 'get_val')
+    AF = ('CPU', 'cpu', 'get_val')
+    PRI = ('Thread priority', '', 'get_val')
+    NXT = ('Next thread', 'next_thread', 'get_val')
+
+def get_all_threads():
+    current_tcb_arr = []
+
+    try:
+        current_tcb_head = gdb.parse_and_eval('_kernel.threads')
+    except gdb.error as err:
+        print(err, end='\n\n')
+        return current_tcb_arr
+
+    while current_tcb_head != 0:
+        current_tcb_arr.append(current_tcb_head)
+        current_tcb_head = current_tcb_head['next_thread']
+
+    return current_tcb_arr
+
+def print_help(tcb_struct):
+    for _, item in enumerate(ThreadProperty):
+        item.print_property_help(tcb_struct)
+    print('')
+
+def show():
+    table = []
+    current_thr = get_all_threads()
+    a_len =  len(current_thr)
+    print(f"# threads: {a_len}")
+
+class ZephyrThread(gdb.Command):
+    """ Generate a print out of the current threads and their states.
+    """
+
+    def __init__(self):
+        super().__init__('zephyr thread', gdb.COMMAND_USER)
+
+    @staticmethod
+    def invoke(_, __):
+        show()
