@@ -10,8 +10,7 @@ class ThreadProperty(StructProperty):
     NAME = ('', 'name', 'get_string_val')
     STATUS = ('State', 'thread_state', 'get_val')
     AF = ('CPU', 'cpu', 'get_val')
-    PRI = ('Thread priority', '', 'get_val')
-    NXT = ('Next thread', 'next_thread', 'get_val')
+    PRI = ('Thread priority', 'priority', 'get_val')
 
 def get_all_threads():
     current_tcb_arr = []
@@ -28,6 +27,19 @@ def get_all_threads():
 
     return current_tcb_arr
 
+def get_table_row(thread_ptr):
+    row = []
+    thread = thread_ptr.referenced_value()
+    fields = thread_ptr.type.target()
+    for _, item in enumerate(ThreadProperty):
+        val = thread
+
+        if not item.exist(fields):
+            continue
+
+        row.append(item.value_str(val))
+    return row
+
 def print_help(tcb_struct):
     for _, item in enumerate(ThreadProperty):
         item.print_property_help(tcb_struct)
@@ -38,6 +50,10 @@ def show():
     current_thr = get_all_threads()
     a_len =  len(current_thr)
     print(f"# threads: {a_len}")
+
+    for _, thread in enumerate(current_thr):
+        row = get_table_row(thread)
+        print(row)
 
 class ZephyrThread(gdb.Command):
     """ Generate a print out of the current threads and their states.
