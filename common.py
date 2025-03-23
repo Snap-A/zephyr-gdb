@@ -29,6 +29,10 @@ class StructProperty(enum.Enum):
         val_fn = getattr(self, self.get_val_fn if obj else 'get_empty_val')
         return str(val_fn(obj))
 
+    def value_hex_str(self, obj):
+        val_fn = getattr(self, self.get_val_fn if obj else 'get_empty_val')
+        return '{:0X}'.format(val_fn(obj))
+
     def exist(self, struct):
         if self.property == '':
             return True
@@ -74,6 +78,26 @@ class StructProperty(enum.Enum):
         except ValueError:
             name = 'N/A?'
         return name
+
+def print_table(table, headers=None):
+    if headers:
+        table.insert(0, headers)
+
+    max_column = [0] * len(table[0])
+    for _, row in enumerate(table):
+        for k, _ in enumerate(max_column):
+            max_column[k] = max(len(str(row[k])), max_column[k])
+
+    # print formatted
+    for i, row in enumerate(table):
+        # print row
+        for k, _ in enumerate(max_column):
+            print(str(row[k]).rjust(max_column[k]), end=' ')
+        print(end='\n')
+        # print header separator
+        if headers and i == 0:
+            header_separator = ' '.join([''.rjust(max_column[i], '-') for i in range(len(max_column))])
+            print(header_separator)
 
 class Zephyr(gdb.Command):
     def __init__(self):
