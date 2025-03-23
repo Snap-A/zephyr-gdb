@@ -8,9 +8,11 @@ from .common import StructProperty
 
 class ThreadProperty(StructProperty):
     NAME = ('', 'name', 'get_string_val')
+    ENTRY = ('Entry pointer', 'entry', 'get_val')
     STATUS = ('State', 'thread_state', 'get_val')
-    AF = ('CPU', 'cpu', 'get_val')
-    PRI = ('Thread priority', 'priority', 'get_val')
+    PRI = ('Thread priority', 'prio', 'get_val')
+    AF = ('CPU', 'base.cpu', 'get_val')
+    IDLE = ('Idle Thread', 'is_idle', 'get_val')
 
 def get_all_threads():
     current_tcb_arr = []
@@ -30,14 +32,30 @@ def get_all_threads():
 def get_table_row(thread_ptr):
     row = []
     thread = thread_ptr.referenced_value()
-    fields = thread_ptr.type.target()
+    base = thread['base']
+    entry = thread['entry']
+
+    fields = thread.type
     for _, item in enumerate(ThreadProperty):
         val = thread
-
         if not item.exist(fields):
             continue
-
         row.append(item.value_str(val))
+
+    fields = base.type
+    for _, item in enumerate(ThreadProperty):
+        val = base
+        if not item.exist(fields):
+            continue
+        row.append(item.value_str(val))
+
+    fields = entry.type
+    for _, item in enumerate(ThreadProperty):
+        val = entry
+        if not item.exist(fields):
+            continue
+        row.append(item.value_str(val))
+
     return row
 
 def print_help(tcb_struct):
