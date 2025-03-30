@@ -2,35 +2,56 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # pylint: disable=import-error
+'''
+Implementation of the 'thread' command
+'''
+
 import gdb
-import enum
+
 from .common import StructProperty, print_table
 
 class ThreadProperty(StructProperty):
+    '''
+    Symbol lookup for struct thread
+    '''
     NAME = ('', 'name', 'get_string_val')
 
 class BaseProperty(StructProperty):
+    '''
+    Symbol lookup for struct base inside thread
+    '''
     STATUS = ('State', 'thread_state', 'get_val')
     AF = ('CPU', 'cpu', 'get_val')
     IDLE = ('Idle Thread', 'is_idle', 'get_val')
 
 class BaseUnionProperty(StructProperty):
+    '''
+    Symbol lookup for union inside struct base
+    '''
     PRIO = ('Thread priority', 'prio', 'get_val_as_is')
 
 class EntryProperty(StructProperty):
+    '''
+    Symbol lookup for struct entry
+    '''
     ENTRY = ('Entry pointer', 'pEntry', 'get_val')
 
 class StackProperty(StructProperty):
+    '''
+    Symbol lookup for struct stack
+    '''
     START = ('Stack base', 'start', 'get_val')
     SIZE = ('Stack size', 'size', 'get_val')
 
 def get_current():
+    all_current = []
     try:
         current_tcb = gdb.parse_and_eval('_kernel.cpus.current')
+        all_current.append(current_tcb)
     except gdb.error as err:
         print(err, end='\n\n')
         return None
-    return current_tcb
+    return all_current
 
 def get_all_threads():
     current_tcb_arr = []
@@ -48,24 +69,30 @@ def get_all_threads():
     return current_tcb_arr
 
 def get_table_row(thread_ptr, current_tcb):
+    is_current = False
     row = []
     thread = thread_ptr.referenced_value()
     base = thread['base']
     entry = thread['entry']
     # Union of priority values is found after this
-    union_ptr = base['thread_state'].address + 1;
+    union_ptr = base['thread_state'].address + 1
 
     try:
         stack = thread['stack_info']
         got_stack_info = True
-    except:
+    except: # pylint: disable=bare-except
         got_stack_info = False
 
-    if current_tcb == thread_ptr:
+    if thread_ptr in current_tcb:
         row.append('*')
+        is_current = True
     else:
         row.append(' ')
 
+    # The thread TCB pointer
+    tcb = str(thread_ptr).split()
+    row.append(tcb[0])
+    
     fields = thread.type
     for _, item in enumerate(ThreadProperty):
         val = thread
@@ -100,7 +127,7 @@ def get_table_row(thread_ptr, current_tcb):
                 continue
             row.append(item.value_hex_str(val))
 
-    return row
+    return row, is_current
 
 def print_help(tcb_struct):
     for _, item in enumerate(ThreadProperty):
@@ -126,11 +153,13 @@ def get_table_headers(thread_lst, current_tcb):
     try:
         stack = thread['stack_info']
         got_stack_info = True
-    except:
+    except: # pylint: disable=bare-except
         got_stack_info = False
 
     if current_tcb is not None:
         row.append('CUR')
+
+    row.append('TCB')
 
     for _, item in enumerate(ThreadProperty):
         if not item.exist(thread.type):
@@ -158,13 +187,15 @@ def get_table_headers(thread_lst, current_tcb):
 def get_table_rows(all_thr, current_thr):
     table = []
     for _, thread in enumerate(all_thr):
-        row = get_table_row(thread, current_thr)
-        table.append(row)
+        row,cur = get_table_row(thread, current_thr)
+        if cur:
+            table.insert(0, row)
+        else:
+            table.append(row)
     return table
 
 def show():
     table = []
-    headers = []
     current_thr = get_current()
     all_thr = get_all_threads()
     a_len =  len(all_thr)

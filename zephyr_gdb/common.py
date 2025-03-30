@@ -3,18 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # pylint: disable=import-error
-import gdb
+'''
+Common classes and functions for all commands
+'''
+
 import enum
+import gdb
 
 class StructProperty(enum.Enum):
-    """Class describes struct fields to print
+    '''Class describes struct fields to print
     :param help_: Description of property. Not shown if empty
     :type help_: str
     :param property_: Name of structure's field to grab the value.
     :type property_: str
     :param get_val_fn: Method to grab a value using object and self.property_
     :type get_val_fn: str
-    """
+    '''
 
     def __init__(self, help_, property_, get_val_fn):
         self._help = help_
@@ -31,7 +35,8 @@ class StructProperty(enum.Enum):
 
     def value_hex_str(self, obj):
         val_fn = getattr(self, self.get_val_fn if obj else 'get_empty_val')
-        return '{:0X}'.format(val_fn(obj))
+        val_str = f'0x{val_fn(obj):02x}'
+        return val_str
 
     def exist(self, struct):
         if self.property == '':
@@ -96,9 +101,13 @@ def print_table(table, headers=None):
         print(end='\n')
         # print header separator
         if headers and i == 0:
-            header_separator = ' '.join([''.rjust(max_column[i], '-') for i in range(len(max_column))])
+            header_separator = ' '.join([''.rjust(max_column[i], '-') \
+                                         for i in range(len(max_column))])
             print(header_separator)
 
 class Zephyr(gdb.Command):
+    '''
+    Add the 'zephyr' command to GDB
+    '''
     def __init__(self):
         super().__init__('zephyr', gdb.COMMAND_USER, gdb.COMPLETE_NONE, True)
